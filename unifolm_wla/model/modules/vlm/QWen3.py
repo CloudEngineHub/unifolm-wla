@@ -1,12 +1,14 @@
 from typing import Optional
 
+import os
+
 import torch
 from unifolm_wla.training.trainer_utils import initialize_overwatch
 from unifolm_wla.model.modules.projector.robot_state import (
     RobotStateProjector,
     load_robot_state_projector_state_dict,
 )
-from transformers import AutoProcessor, Qwen3VLForConditionalGeneration
+from transformers import AutoConfig, AutoProcessor, Qwen3VLForConditionalGeneration
 from transformers.modeling_outputs import CausalLMOutputWithPast
 
 logger = initialize_overwatch(__name__)
@@ -29,6 +31,23 @@ CONTROL_MODE_WITH_LOW = "Control Mode: Arms: EE, LOW BODY: JOINT"
 
 
 import torch.nn as nn
+
+
+def _is_weightless_base_vlm(model_id: str) -> bool:
+    """True if `model_id` is a local dir with config/tokenizer but no weight files.
+
+    Released VLA checkpoints ship their own full VLM weights in `model.safetensors`
+    (loaded on top afterwards), so `base_vlm` only needs to provide the architecture
+    config + tokenizer (including any custom tokens like `<|robot_state|>`) — actual
+    base weights would be downloaded/loaded and then immediately overwritten.
+    """
+    if not os.path.isdir(model_id):
+        return False
+    weight_files = (
+        "model.safetensors", "model.safetensors.index.json",
+        "pytorch_model.bin", "pytorch_model.bin.index.json",
+    )
+    return not any(os.path.exists(os.path.join(model_id, f)) for f in weight_files)
 
 
 class _QWen3_VL_Interface(nn.Module):
@@ -61,12 +80,23 @@ class _QWen3_VL_Interface(nn.Module):
                 print("[WARNING] flash_attn not installed, falling back to sdpa")
                 attn_implementation = "sdpa"
 
-        model = Qwen3VLForConditionalGeneration.from_pretrained(
-            model_id,
-            attn_implementation=attn_implementation,
-            dtype=torch.bfloat16,
-            ignore_mismatched_sizes=True, # resize image no longer needed? @TODO check bug
-        )
+        if _is_weightless_base_vlm(model_id):
+            # `base_vlm` only ships config/tokenizer (no weight files) — this happens
+            # for released VLA checkpoints, where the full VLM weights already live in
+            # the VLA `model.safetensors` and would just be overwritten on load. Build
+            # the architecture from config (random init) instead of downloading/loading
+            # base weights that are immediately discarded.
+            hf_config = AutoConfig.from_pretrained(model_id)
+            model = Qwen3VLForConditionalGeneration._from_config(
+                hf_config, attn_implementation=attn_implementation, dtype=torch.bfloat16,
+            )
+        else:
+            model = Qwen3VLForConditionalGeneration.from_pretrained(
+                model_id,
+                attn_implementation=attn_implementation,
+                dtype=torch.bfloat16,
+                ignore_mismatched_sizes=True, # resize image no longer needed? @TODO check bug
+            )
         processor = AutoProcessor.from_pretrained(model_id)
         # Right padding: training packs the full chat (system + user + assistant
         # + im_end), so pads sit at the tail and never intrude into the

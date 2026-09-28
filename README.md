@@ -14,7 +14,23 @@
 
 UnifoLM-WLA-1.0 is Unitree Robotics' comprehensively upgraded, next-generation general-purpose humanoid robot foundation model with 6B parameters. Built on large-scale general multimodal perception and understanding data and interaction-centric world modeling, it substantially advances spatial perception and understanding, achieving leading results across multiple embodied reasoning benchmarks. Trained on approximately 2,500 hours of high-quality real-robot data, a single model coordinates 64 tasks spanning desktop manipulation and whole-body manipulation. It supports two-finger grippers and multiple five-finger dexterous hands, with strong generalization across tasks and end effectors.
 
+## 📋 Table of Contents
+
+- [News](#-news)
+- [Open-Source Plan](#-open-source-plan)
+- [Robot Action, State, and Statistics Processing Specification](docs/robot_action_state_processing_en.md)
+- [Train and Evaluate an Action Expert](docs/train_action_expert_en.md)
+  - [Installation](docs/train_action_expert_en.md#installation)
+  - [Evaluating a Checkpoint](docs/train_action_expert_en.md#evaluating-a-checkpoint)
+  - [Model Server](docs/train_action_expert_en.md#model-server)
+  - [Fine-tuning the UnifoLM-WLA-1.0-Base Action Expert](docs/train_action_expert_en.md#fine-tuning-the-unifolm-wla-10-base-action-expert)
+  - [Training from Scratch](docs/train_action_expert_en.md#training-from-scratch)
+- [Citation](#citation)
+- [Acknowledgements](#acknowledgements)
+- [License](#license)
+
 ## 🔥 News
+- Sep 28, 2026: 🚀 we released the [UnifoLM-WLA-1.0-Base](https://huggingface.co/unitreerobotics/UnifoLM-WLA-1.0-Base) and fine-tuning code.
 - Sep 20, 2026: 🚀 we released the model modules and training action expert code
 - Sep 11, 2026: 🚀 we released the model weights of [UnifoLM-ER-1](https://huggingface.co/unitreerobotics/UnifoLM-ER-1)
 - Sep 11, 2026: 🚀 we released the model weights of [UnifoLM-ER-Flow](https://huggingface.co/unitreerobotics/UnifoLM-ER-Flow)
@@ -22,13 +38,13 @@ UnifoLM-WLA-1.0 is Unitree Robotics' comprehensively upgraded, next-generation g
 ## 📑 Open-Source Plan
 
 - **Code**
-  - [x] Code for training action experts based on UnifoLM-ER models
-  - [ ] Code for fine-tuning based on UnifoLM-WLA-Base
+  - [x] [Code for training action experts based on UnifoLM-ER models](docs/train_action_expert_en.md#training-from-scratch)
+  - [x] [Code for fine-tuning based on UnifoLM-WLA-1.0-Base](docs/train_action_expert_en.md#fine-tuning-the-unifolm-wla-10-base-action-expert)
   - [ ] Code for LoRA fine-tuning
 - **Models**
   - [x] [**UnifoLM-ER-1**](https://huggingface.co/unitreerobotics/UnifoLM-ER-1)
   - [x] [**UnifoLM-ER-Flow**](https://huggingface.co/unitreerobotics/UnifoLM-ER-Flow)
-  - [ ] UnifoLM-WLA-Base
+  - [x] [**UnifoLM-WLA-1.0-Base**](https://huggingface.co/unitreerobotics/UnifoLM-WLA-1.0-Base)
 - **Datasets**
   - [x] [**UniBot-V1 Challenge Dataset**](https://huggingface.co/collections/unitreerobotics/unibot-v1-challenge-dataset)
   - [x] [**UnifoLM-WBT-Dataset**](https://huggingface.co/collections/unitreerobotics/unifolm-wbt-dataset)
@@ -37,7 +53,7 @@ UnifoLM-WLA-1.0 is Unitree Robotics' comprehensively upgraded, next-generation g
 ## 📘 Technical Documentation
 
 - [Robot Action, State, and Statistics Processing Specification](docs/robot_action_state_processing_en.md)
-- [Train an Action Expert from Scratch](docs/train_action_expert_en.md)
+- [Train and Evaluate an Action Expert](docs/train_action_expert_en.md)
 
 ## Citation
 

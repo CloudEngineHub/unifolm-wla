@@ -5,9 +5,10 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "unifolm_wla"
 authors = [
-    {name = "Jinhui Ye", email="jinhuiyes@gmail.com"},
-    {name = "Fangjing Wang", email="fangjing_wang@outlook.com"},
-    {name = "Junqiu Yu", email="michaelyu1101@163.com"},
+    {name = "Jianxin Huang", email="jx_huang@163.com"},
+    {name = "Kai Chen", email="rd_ck3@unitree.com"},
+    {name = "Jiahao Jiang", email="rd_jjh@unitree.com"},
+    {name = "Yuchen Xiao", email="rd_xyc@unitree.com"},
 ]
 description = "unifolm_wla: A Lego-like Codebase for Vision-Language-Action Model Developing ."
 version = "1.0.1"
@@ -20,7 +21,6 @@ classifiers = [
     "Intended Audience :: Developers",
     "Intended Audience :: Education",
     "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: Apache Software License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3 :: Only",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",

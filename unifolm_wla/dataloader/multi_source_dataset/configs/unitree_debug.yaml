@@ -123,9 +123,9 @@ datasets:
     peer_data_paths: *unitree_all_paths
     image_keys: *unitree_img_with_stereo
 
-  - <<: *unitree_fullbody_base
-    enabled: true
-    name: "unitree_g1_jidi_fullbody_v3"
-    data_path: "unitree_g1_jidi/unitree_g1_jidi_opensource_v3/"
-    peer_data_paths: *unitree_all_paths
-    image_keys: *unitree_img_wo_stereo
+  # - <<: *unitree_fullbody_base
+  #   enabled: true
+  #   name: "unitree_g1_jidi_fullbody_v3"
+  #   data_path: "unitree_g1_jidi/unitree_g1_jidi_opensource_v3/"
+  #   peer_data_paths: *unitree_all_paths
+  #   image_keys: *unitree_img_wo_stereo
