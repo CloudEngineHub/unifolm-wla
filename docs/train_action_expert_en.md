@@ -1,12 +1,135 @@
-# Training an Action Expert from Scratch
+# Training and Evaluating an Action Expert
 
 [Chinese](train_action_expert.md) | **English**
 
-This guide explains how to train a UnifoLM-WLA action expert from scratch using
-a pretrained UnifoLM-ER vision-language model. All commands assume that the
+This guide explains how to evaluate a released UnifoLM-WLA action expert
+checkpoint against a local episode, and how to train one from scratch using a
+pretrained UnifoLM-ER vision-language model. All commands assume that the
 current working directory is the project root.
 
-## 1. Download the Base Vision-Language Model
+## Installation
+
+This project uses [uv](https://github.com/astral-sh/uv) for dependency management.
+
+1. Install `uv`:
+
+   ```bash
+   curl -LsSf https://astral.sh/uv/install.sh | sh
+   ```
+
+2. Install the project (from the project root):
+
+   ```bash
+   uv sync
+   ```
+
+## Evaluating a Checkpoint
+
+[`examples/pretrain/eval_files/unitree/eval_local_episode.py`](../examples/pretrain/eval_files/unitree/eval_local_episode.py)
+runs a trained (or released) checkpoint chunk-by-chunk across one full episode
+of a local Unitree dataset and plots predicted vs. ground-truth actions for
+every dimension, both in absolute end-effector pose and in the model's native
+relative representation.
+
+### 1. Download the Model
+
+Download the released checkpoint from the
+[UnifoLM-WLA-1.0 model collection](https://huggingface.co/collections/unitreerobotics/unifolm-wla-10)
+to a local directory, for example with `hf`:
+
+```bash
+hf download unitreerobotics/UnifoLM-WLA-1.0 \
+    --local-dir playground/Pretrained_models/UnifoLM-WLA-1.0
+```
+
+The downloaded directory should have the following layout:
+
+```text
+UnifoLM-WLA-1.0/
+├── checkpoints/
+│   └── model.safetensors
+├── config.yaml
+├── dataset_statistics.json
+└── tokenizer/
+```
+
+### 2. Download and Configure the Evaluation Data
+
+Download the evaluation data from the
+[UnifoLM-WLA-1.0 dataset collection](https://huggingface.co/collections/unitreerobotics/unifolm-wla-10).
+Each task is a separate dataset repo; download each into a subdirectory under
+its Dex1/WBT type directory, for example with `hf`:
+
+```bash
+export DATA_ROOT=/path/to/unifolm_data
+
+hf download unitreerobotics/G1_Dex1_MountCamera_Dataset --repo-type dataset \
+    --local-dir $DATA_ROOT/UnifoLM_G1_Dex1_Dataset/G1_Dex1_MountCamera_Dataset
+
+hf download unitreerobotics/G1_WBT_Brainco_Pickup_Pillow --repo-type dataset \
+    --local-dir $DATA_ROOT/UnifoLM_WBT_Dataset/G1_WBT_Brainco_Pickup_Pillow
+```
+
+Organize the data by the Dex1 and WBT dataset types. Each type may contain
+multiple task directories. The recommended directory structure is:
+
+```text
+$DATA_ROOT/
+├── UnifoLM_G1_Dex1_Dataset/
+│   ├── G1_Dex1_MountCamera_Dataset/
+│   └── G1_Dex1_Stack_Block/
+└── UnifoLM_WBT_Dataset/
+    ├── G1_WBT_Brainco_Pickup_Pillow/
+    └── G1_WBT_Brainco_Make_The_Bed/
+```
+
+Then edit
+[`unifolm_wla/dataloader/multi_source_dataset/configs/unitree.yaml`](../unifolm_wla/dataloader/multi_source_dataset/configs/unitree.yaml):
+
+1. Set `data_base` to `$DATA_ROOT` — the common parent directory containing the Dex1 and WBT directories.
+2. For Dex1 data, inherit from `*unitree_base` and set `data_path` to `UnifoLM_G1_Dex1_Dataset`.
+3. For WBT data, inherit from `*unitree_fullbody_base` and set `data_path` to `UnifoLM_WBT_Dataset`.
+4. Set `cache_dir` to a local cache directory with sufficient free space.
+
+Example configuration:
+
+```yaml
+data_base: "/path/to/unifolm_data"  # $DATA_ROOT
+cache_dir: "/path/to/unifolm_cache"
+
+datasets:
+  - <<: *unitree_base
+    name: "unifolm_g1_dex1"
+    data_path: "UnifoLM_G1_Dex1_Dataset"
+    image_keys: *unitree_img_with_stereo
+
+  - <<: *unitree_fullbody_base
+    name: "unifolm_wbt"
+    data_path: "UnifoLM_WBT_Dataset"
+    image_keys: *unitree_img_wo_stereo
+```
+
+### 3. Run Evaluation
+
+```bash
+python -m examples.pretrain.eval_files.unitree.eval_local_episode \
+    --ckpt_path playground/Pretrained_models/UnifoLM-WLA-1.0/checkpoints/model.safetensors \
+    --data_config_path unifolm_wla/dataloader/multi_source_dataset/configs/unitree.yaml \
+    --episode_idx 0 \
+    --save_dir results/eval_local_episode
+```
+
+Run this from the project root so `unifolm_wla` resolves as a package.
+`--ckpt_path` accepts either a `.safetensors` or `.pt` checkpoint file; the
+script expects the standard run layout — `config.yaml` and
+`dataset_statistics.json` as siblings of the `checkpoints/` directory
+(`<run_dir>/checkpoints/<name>.safetensors`, `<run_dir>/config.yaml`,
+`<run_dir>/dataset_statistics.json`). If `dataset_statistics.json` is
+missing, the script regenerates it from `--data_config_path` automatically.
+
+## Training from Scratch
+
+### 1. Download the Base Vision-Language Model
 
 Download either of the following base models:
 
@@ -27,48 +150,12 @@ To use UnifoLM-ER-Flow instead, set the path to its local directory:
 base_vlm=/path/to/UnifoLM-ER-Flow
 ```
 
-## 2. Download and Configure the Training Data
+### 2. Download and Configure the Training Data
 
 Download the training data from the
 [UnifoLM-WLA-1.0 dataset collection](https://huggingface.co/collections/unitreerobotics/unifolm-wla-10).
-Organize the data by the Dex1 and WBT dataset types. Each type may contain
-multiple task directories. The recommended directory structure is:
-
-```text
-/path/to/unifolm_data/
-├── UnifoLM_G1_Dex1_Dataset/
-│   ├── G1_Dex1_MountCamera_Dataset/
-│   └── G1_Dex1_Stack_Block/
-└── UnifoLM_WBT_Dataset/
-    ├── G1_WBT_Brainco_Pickup_Pillow/
-    └── G1_WBT_Brainco_Make_The_Bed/
-```
-
-Then edit
-[`unifolm_wla/dataloader/multi_source_dataset/configs/unitree.yaml`](../unifolm_wla/dataloader/multi_source_dataset/configs/unitree.yaml):
-
-1. Set `data_base` to the common parent directory containing the Dex1 and WBT directories.
-2. For Dex1 data, inherit from `*unitree_base` and set `data_path` to `UnifoLM_G1_Dex1_Dataset`.
-3. For WBT data, inherit from `*unitree_fullbody_base` and set `data_path` to `UnifoLM_WBT_Dataset`.
-4. Set `cache_dir` to a local cache directory with sufficient free space.
-
-Example configuration:
-
-```yaml
-data_base: "/path/to/unifolm_data"
-cache_dir: "/path/to/unifolm_cache"
-
-datasets:
-  - <<: *unitree_base
-    name: "unifolm_g1_dex1"
-    data_path: "UnifoLM_G1_Dex1_Dataset"
-    image_keys: *unitree_img_with_stereo
-
-  - <<: *unitree_fullbody_base
-    name: "unifolm_wbt"
-    data_path: "UnifoLM_WBT_Dataset"
-    image_keys: *unitree_img_wo_stereo
-```
+Organize the data by the Dex1 and WBT dataset types, following the same
+layout and `unitree.yaml` configuration steps described above.
 
 When `multi_task: true`, the loader treats each task directory under
 `data_path` as a sub-dataset. All sources with `enabled: true` are combined
@@ -80,7 +167,7 @@ When LeRobot data is loaded for the first time, the loader creates an Arrow
 cache under `cache_dir/arrow_cache`. Subsequent runs reuse this cache. Place
 `cache_dir` on a disk with sufficient capacity and good read/write performance.
 
-## 3. Train on a Single Node
+### 3. Train on a Single Node
 
 After verifying `base_vlm`, `run_root_dir`, and the dataset configuration path
 in the launch script, run the following command from the project root:

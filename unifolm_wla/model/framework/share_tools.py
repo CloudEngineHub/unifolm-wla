@@ -393,6 +393,15 @@ def read_mode_config(pretrained_checkpoint):
         # Load Dataset Statistics for Action Denormalization
         with open(dataset_statistics_json, "r") as f:
             norm_stats = json.load(f)
+
+        # Resolve a relative `base_vlm` (e.g. a tokenizer/config bundle shipped
+        # alongside a released checkpoint) against `run_dir`, so loading does not
+        # depend on the caller's current working directory.
+        base_vlm = global_cfg.get("framework", {}).get("qwenvl", {}).get("base_vlm")
+        if base_vlm and not os.path.isabs(base_vlm) and not os.path.isdir(base_vlm):
+            candidate = run_dir / base_vlm
+            if candidate.is_dir():
+                global_cfg["framework"]["qwenvl"]["base_vlm"] = str(candidate)
     else:
         overwatch.error(f"❌ Pretrained checkpoint `{pretrained_checkpoint}` does not exist.")
         raise FileNotFoundError(f"Pretrained checkpoint `{pretrained_checkpoint}` does not exist.")
