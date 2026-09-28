@@ -21,8 +21,8 @@ UnifoLM-WLA-1.0 是宇树科技全面升级的新一代通用人形机器人基�
 ## 📑 开源计划
 
 - **代码**
-  - [x] 基于 UnifoLM-ER 模型训练动作专家的代码
-  - [ ] 基于 UnifoLM-WLA-Base 的微调代码
+  - [x] [基于 UnifoLM-ER 模型训练动作专家的代码](docs/train_action_expert.md#从零训练)
+  - [x] [基于 UnifoLM-WLA-Base 的微调代码](docs/train_action_expert.md#微调已发布的-checkpoint)
   - [ ] LoRA 微调代码
 - **模型**
   - [x] [**UnifoLM-ER-1**](https://huggingface.co/unitreerobotics/UnifoLM-ER-1)
