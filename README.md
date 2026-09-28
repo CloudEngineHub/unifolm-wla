@@ -30,6 +30,7 @@ UnifoLM-WLA-1.0 is Unitree Robotics' comprehensively upgraded, next-generation g
 - [License](#license)
 
 ## 🔥 News
+- Sep 28, 2026: 🚀 we released the [UnifoLM-WLA-1.0-Base](https://huggingface.co/unitreerobotics/UnifoLM-WLA-1.0-Base) and fine-tuning code.
 - Sep 20, 2026: 🚀 we released the model modules and training action expert code
 - Sep 11, 2026: 🚀 we released the model weights of [UnifoLM-ER-1](https://huggingface.co/unitreerobotics/UnifoLM-ER-1)
 - Sep 11, 2026: 🚀 we released the model weights of [UnifoLM-ER-Flow](https://huggingface.co/unitreerobotics/UnifoLM-ER-Flow)

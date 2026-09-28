@@ -5,10 +5,10 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "unifolm_wla"
 authors = [
-    {name = "Jianxin Huang", email="jx_huang@163.com"}
-    {name = "Kai Chen", email="rd_ck3@unitree.com"}
-    {name = "Jiahao Jiang", email="rd_jjh@unitree.com"}
-    {name = "Yuchen Xiao", email="rd_xyc@unitree.com"}
+    {name = "Jianxin Huang", email="jx_huang@163.com"},
+    {name = "Kai Chen", email="rd_ck3@unitree.com"},
+    {name = "Jiahao Jiang", email="rd_jjh@unitree.com"},
+    {name = "Yuchen Xiao", email="rd_xyc@unitree.com"},
 ]
 description = "unifolm_wla: A Lego-like Codebase for Vision-Language-Action Model Developing ."
 version = "1.0.1"
