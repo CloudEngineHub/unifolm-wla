@@ -171,11 +171,11 @@ python -m model_server.eval_local_episode_wbc_msgpack_server_only \
     --save_dir results/eval_local_episode_wbc_msgpack
 ```
 
-## Fine-tuning a Released Checkpoint
+## Fine-tuning the UnifoLM-WLA-1.0-Base Action Expert
 
 [`examples/unifolm_wla/train_files/run_finetune_mmdit_frozen_vlm.sh`](../examples/unifolm_wla/train_files/run_finetune_mmdit_frozen_vlm.sh)
-fine-tunes a released `UnifoLM-WLA-*-Base` checkpoint (e.g.
-[`unitreerobotics/UnifoLM-WLA-1.0-Base`](https://huggingface.co/collections/unitreerobotics/unifolm-wla-10))
+fine-tunes a released `UnifoLM-WLA-1.0-Base` checkpoint (e.g.
+[`unitreerobotics/UnifoLM-WLA-1.0-Base`](https://huggingface.co/unitreerobotics/UnifoLM-WLA-1.0-Base))
 on new data. The VLM backbone is frozen (`trainer.freeze_modules:
 qwen_vl_interface`), so only the action-expert (DiT) head and the robot-state
 projector train — this fits a single 24GB GPU.

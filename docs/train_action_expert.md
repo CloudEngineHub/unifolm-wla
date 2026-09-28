@@ -164,11 +164,11 @@ python -m model_server.eval_local_episode_wbc_msgpack_server_only \
     --save_dir results/eval_local_episode_wbc_msgpack
 ```
 
-## 微调已发布的 Checkpoint
+## 微调 UnifoLM-WLA-1.0-Base 动作专家
 
 [`examples/unifolm_wla/train_files/run_finetune_mmdit_frozen_vlm.sh`](../examples/unifolm_wla/train_files/run_finetune_mmdit_frozen_vlm.sh)
-会在新数据上微调一个已发布的 `UnifoLM-WLA-*-Base` checkpoint（例如
-[`unitreerobotics/UnifoLM-WLA-1.0-Base`](https://huggingface.co/collections/unitreerobotics/unifolm-wla-10)）。
+会在新数据上微调一个已发布的 `UnifoLM-WLA-1.0-Base` checkpoint（例如
+[`unitreerobotics/UnifoLM-WLA-1.0-Base`](https://huggingface.co/unitreerobotics/UnifoLM-WLA-1.0-Base)）。
 VLM 主干被冻结（`trainer.freeze_modules: qwen_vl_interface`），只训练动作专家
 （DiT）头和 robot-state projector——因此单张 24GB 显卡即可运行。
 
