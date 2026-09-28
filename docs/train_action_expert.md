@@ -62,8 +62,8 @@ export DATA_ROOT=/path/to/unifolm_data
 hf download unitreerobotics/G1_Dex1_MountCamera_Dataset --repo-type dataset \
     --local-dir $DATA_ROOT/UnifoLM_G1_Dex1_Dataset/G1_Dex1_MountCamera_Dataset
 
-hf download unitreerobotics/G1_WBT_Brainco_Pickup_Pillow --repo-type dataset \
-    --local-dir $DATA_ROOT/UnifoLM_WBT_Dataset/G1_WBT_Brainco_Pickup_Pillow
+hf download unitreerobotics/G1_WBT_Brainco_Supermarket_Shelf_Organizing --repo-type dataset \
+    --local-dir $DATA_ROOT/UnifoLM_WBT_Dataset/G1_WBT_Brainco_Supermarket_Shelf_Organizing
 ```
 
 数据需要按照 Dex1 和 WBT 两种类型分别组织；同一种类型的目录下可以包含多个任务。
@@ -75,7 +75,7 @@ $DATA_ROOT/
 │   ├── G1_Dex1_MountCamera_Dataset/
 │   └── G1_Dex1_Stack_Block/
 └── UnifoLM_WBT_Dataset/
-    ├── G1_WBT_Brainco_Pickup_Pillow/
+    ├── G1_WBT_Brainco_Supermarket_Shelf_Organizing/
     └── G1_WBT_Brainco_Make_The_Bed/
 ```
 
