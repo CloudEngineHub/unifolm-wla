@@ -127,6 +127,50 @@ script expects the standard run layout — `config.yaml` and
 `<run_dir>/dataset_statistics.json`). If `dataset_statistics.json` is
 missing, the script regenerates it from `--data_config_path` automatically.
 
+## Model Server
+
+[`model_server/action_server_wbc_msgpack_unitree.py`](../model_server/action_server_wbc_msgpack_unitree.py)
+runs a trained checkpoint behind a websocket/msgpack action server for the
+Unitree G1 whole-body-control (WBC) client.
+[`model_server/eval_local_episode_wbc_msgpack_server_only.py`](../model_server/eval_local_episode_wbc_msgpack_server_only.py)
+drives an already-running server over one full local episode and compares its
+predictions against ground truth.
+
+> **Dex1 only.** `_ACTIVE_SLOT_SPECS` in
+> [`model_server/unifolm_wla_action_adapter.py`](../model_server/unifolm_wla_action_adapter.py)
+> mirrors `unitree.yaml`'s `unitree_base` (Dex1) `action_keys` — it has no
+> entry for `left_fig6d` / `right_fig6d` (dexterous-hand finger angles) or
+> `base_pose` (whole-body relative base motion), which only exist under
+> `unitree_fullbody_base` (WBT). Consequently the action mask built from it,
+> and the client obs/action protocol hardcoded in
+> `action_server_wbc_msgpack_unitree.py` (`_DATA_KEYS`, `_build_state_unnorm`,
+> `_encode_action`), only cover the two-finger-gripper Dex1 action space. To
+> serve a `UnifoLM_WBT` checkpoint you would need to: (1) add
+> `left_fig6d`/`right_fig6d`/`base` (`base_rotvec`) entries to
+> `_ACTIVE_SLOT_SPECS`, and (2) extend the server's obs/action protocol (obs
+> keys for finger angles + base pose, and the corresponding `action.*` keys in
+> `_encode_action`) to carry those fields — the current protocol does not.
+
+### 1. Start the Server
+
+```bash
+python -m model_server.action_server_wbc_msgpack_unitree \
+    --ckpt_path playground/Pretrained_models/UnifoLM-WLA-1.0/checkpoints/model.safetensors \
+    --host 0.0.0.0 --port 8600 --instruction "pick up the object"
+```
+
+### 2. Evaluate the Running Server
+
+With the server from step 1 still running, in another terminal:
+
+```bash
+python -m model_server.eval_local_episode_wbc_msgpack_server_only \
+    --ckpt_path playground/Pretrained_models/UnifoLM-WLA-1.0/checkpoints/model.safetensors \
+    --data_config_path unifolm_wla/dataloader/multi_source_dataset/configs/unitree.yaml \
+    --host 127.0.0.1 --port 8600 --episode_idx 0 \
+    --save_dir results/eval_local_episode_wbc_msgpack
+```
+
 ## Training from Scratch
 
 ### 1. Download the Base Vision-Language Model

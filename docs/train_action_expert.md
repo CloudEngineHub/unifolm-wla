@@ -122,6 +122,48 @@ python -m examples.pretrain.eval_files.unitree.eval_local_episode \
 `<run_dir>/dataset_statistics.json`）。若缺少 `dataset_statistics.json`，
 脚本会根据 `--data_config_path` 自动重新生成。
 
+## 模型服务
+
+[`model_server/action_server_wbc_msgpack_unitree.py`](../model_server/action_server_wbc_msgpack_unitree.py)
+会将训练好的 checkpoint 运行在一个 websocket/msgpack 动作服务后面，供 Unitree G1
+全身控制（WBC）客户端调用。
+[`model_server/eval_local_episode_wbc_msgpack_server_only.py`](../model_server/eval_local_episode_wbc_msgpack_server_only.py)
+会驱动一个已经在运行的服务，在本地一整段 episode 上进行推理，并与真值对比。
+
+> **仅支持 Dex1。**
+> [`model_server/unifolm_wla_action_adapter.py`](../model_server/unifolm_wla_action_adapter.py)
+> 中的 `_ACTIVE_SLOT_SPECS` 对应的是 `unitree.yaml` 里 `unitree_base`（Dex1）的
+> `action_keys`，没有 `left_fig6d` / `right_fig6d`（五指灵巧手关节角度）和
+> `base_pose`（全身移动相对位姿）这几项——这些字段只存在于 `unitree_fullbody_base`
+> （WBT）中。因此由它构造出的 action mask，以及
+> `action_server_wbc_msgpack_unitree.py` 里硬编码的客户端 obs/action 协议
+> （`_DATA_KEYS`、`_build_state_unnorm`、`_encode_action`），目前都只覆盖二指
+> 夹爪的 Dex1 动作空间。若要服务 `UnifoLM_WBT` checkpoint，需要：（1）在
+> `_ACTIVE_SLOT_SPECS` 中补充 `left_fig6d`/`right_fig6d`/`base`（对应
+> `base_rotvec`）这几项；（2）扩展服务端的 obs/action 协议（新增手指角度、
+> 全身位姿对应的 obs key，以及 `_encode_action` 里相应的 `action.*` 返回
+> 字段）——当前协议尚未支持。
+
+### 1. 启动服务
+
+```bash
+python -m model_server.action_server_wbc_msgpack_unitree \
+    --ckpt_path playground/Pretrained_models/UnifoLM-WLA-1.0/checkpoints/model.safetensors \
+    --host 0.0.0.0 --port 8600 --instruction "pick up the object"
+```
+
+### 2. 评估正在运行的服务
+
+在服务保持运行的情况下，另开一个终端执行：
+
+```bash
+python -m model_server.eval_local_episode_wbc_msgpack_server_only \
+    --ckpt_path playground/Pretrained_models/UnifoLM-WLA-1.0/checkpoints/model.safetensors \
+    --data_config_path unifolm_wla/dataloader/multi_source_dataset/configs/unitree.yaml \
+    --host 127.0.0.1 --port 8600 --episode_idx 0 \
+    --save_dir results/eval_local_episode_wbc_msgpack
+```
+
 ## 从零训练
 
 ### 1. 下载基础视觉语言模型

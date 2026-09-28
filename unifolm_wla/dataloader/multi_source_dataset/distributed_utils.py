@@ -46,7 +46,7 @@ def is_local_master() -> bool:
 
 def get_cache_dir() -> str:
     """Cache directory for non-DDP file locks. Mirrors modelscope's default."""
-    cache_dir = os.getenv("STARVLA_CACHE_DIR") or os.path.expanduser("~/.cache/starvla")
+    cache_dir = os.getenv("UNIFOLM_WLA_CACHE_DIR") or os.path.expanduser("~/.cache/unifolm_wla")
     os.makedirs(cache_dir, exist_ok=True)
     return cache_dir
 
