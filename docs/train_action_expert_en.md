@@ -113,7 +113,7 @@ datasets:
 
 ```bash
 python -m examples.unifolm_wla.eval_files.unitree.eval_local_episode \
-    --ckpt_path playground/Pretrained_models/UnifoLM-WLA-1.0/checkpoints/model.safetensors \
+    --ckpt_path playground/Pretrained_models/UnifoLM-WLA-1.0-Base/checkpoints/model.safetensors \
     --data_config_path unifolm_wla/dataloader/multi_source_dataset/configs/unitree.yaml \
     --episode_idx 0 \
     --save_dir results/eval_local_episode
