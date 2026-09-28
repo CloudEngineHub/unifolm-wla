@@ -25,7 +25,7 @@ This project uses [uv](https://github.com/astral-sh/uv) for dependency managemen
 
 ## Evaluating a Checkpoint
 
-[`examples/pretrain/eval_files/unitree/eval_local_episode.py`](../examples/pretrain/eval_files/unitree/eval_local_episode.py)
+[`examples/unifolm_wla/eval_files/unitree/eval_local_episode.py`](../examples/unifolm_wla/eval_files/unitree/eval_local_episode.py)
 runs a trained (or released) checkpoint chunk-by-chunk across one full episode
 of a local Unitree dataset and plots predicted vs. ground-truth actions for
 every dimension, both in absolute end-effector pose and in the model's native
@@ -38,8 +38,8 @@ Download the released checkpoint from the
 to a local directory, for example with `hf`:
 
 ```bash
-hf download unitreerobotics/UnifoLM-WLA-1.0 \
-    --local-dir playground/Pretrained_models/UnifoLM-WLA-1.0
+hf download unitreerobotics/UnifoLM-WLA-1.0-Base \
+    --local-dir playground/Pretrained_models/UnifoLM-WLA-1.0-Base
 ```
 
 The downloaded directory should have the following layout:
@@ -112,7 +112,7 @@ datasets:
 ### 3. Run Evaluation
 
 ```bash
-python -m examples.pretrain.eval_files.unitree.eval_local_episode \
+python -m examples.unifolm_wla.eval_files.unitree.eval_local_episode \
     --ckpt_path playground/Pretrained_models/UnifoLM-WLA-1.0/checkpoints/model.safetensors \
     --data_config_path unifolm_wla/dataloader/multi_source_dataset/configs/unitree.yaml \
     --episode_idx 0 \
@@ -171,6 +171,57 @@ python -m model_server.eval_local_episode_wbc_msgpack_server_only \
     --save_dir results/eval_local_episode_wbc_msgpack
 ```
 
+## Fine-tuning a Released Checkpoint
+
+[`examples/unifolm_wla/train_files/run_finetune_mmdit_frozen_vlm.sh`](../examples/unifolm_wla/train_files/run_finetune_mmdit_frozen_vlm.sh)
+fine-tunes a released `UnifoLM-WLA-*-Base` checkpoint (e.g.
+[`unitreerobotics/UnifoLM-WLA-1.0-Base`](https://huggingface.co/collections/unitreerobotics/unifolm-wla-10))
+on new data. The VLM backbone is frozen (`trainer.freeze_modules:
+qwen_vl_interface`), so only the action-expert (DiT) head and the robot-state
+projector train — this fits a single 24GB GPU.
+
+### 1. Download the Base Checkpoint
+
+Download the released checkpoint to fine-tune from, the same way as in
+[Download the Model](#1-download-the-model) above:
+
+```bash
+hf download unitreerobotics/UnifoLM-WLA-1.0-Base \
+    --local-dir playground/Pretrained_models/UnifoLM-WLA-1.0-Base
+```
+
+Skip this step if you already downloaded it there.
+
+### 2. Configure the Data
+
+Download and configure the data exactly as described in
+[Download and Configure the Evaluation Data](#2-download-and-configure-the-evaluation-data)
+above.
+
+### 3. Start Training
+
+```bash
+base_model_dir=playground/Pretrained_models/UnifoLM-WLA-1.0-Base \
+bash examples/unifolm_wla/train_files/run_finetune_mmdit_frozen_vlm.sh
+```
+
+`base_model_dir` is the directory downloaded in step 1. The script points
+`framework.qwenvl.base_vlm` at `${base_model_dir}/tokenizer` (architecture
+config + tokenizer only — the base checkpoint's own VLM weights are loaded via
+`trainer.pretrained_checkpoint` instead, so no separate VLM download is
+needed) and `trainer.pretrained_checkpoint` at
+`${base_model_dir}/checkpoints/model.safetensors`.
+
+Edit [`unifolm_wla/config/training/mmdit_finetune_frozen_vlm.yaml`](../unifolm_wla/config/training/mmdit_finetune_frozen_vlm.yaml)
+to adjust the dataset config path, learning rate, batch size, and training
+steps. To co-train the VLM instead of freezing it (requires more VRAM), clear
+`trainer.freeze_modules`.
+
+Fine-tuning outputs are written to `run_root_dir/run_id` (defaults to
+`playground/Checkpoints/finetune_wla_base_frozen_vlm`), in the same run
+layout consumed by [Evaluating a Checkpoint](#evaluating-a-checkpoint) and
+[Model Server](#model-server) above.
+
 ## Training from Scratch
 
 ### 1. Download the Base Vision-Language Model
@@ -181,7 +232,7 @@ Download either of the following base models:
 - [UnifoLM-ER-Flow](https://huggingface.co/unitreerobotics/UnifoLM-ER-Flow)
 
 After downloading the model, open
-[`examples/pretrain/train_files/run_multi_source_train_mmdit.sh`](../examples/pretrain/train_files/run_multi_source_train_mmdit.sh)
+[`examples/unifolm_wla/train_files/run_multi_source_train_mmdit_from_scratch.sh`](../examples/unifolm_wla/train_files/run_multi_source_train_mmdit_from_scratch.sh)
 and set `base_vlm` to the full path of the local model directory. For example:
 
 ```bash
@@ -217,16 +268,18 @@ After verifying `base_vlm`, `run_root_dir`, and the dataset configuration path
 in the launch script, run the following command from the project root:
 
 ```bash
-bash examples/pretrain/train_files/run_multi_source_train_mmdit.sh
+bash examples/unifolm_wla/train_files/run_multi_source_train_mmdit_from_scratch.sh
 ```
 
 By default, the script launches one process for each GPU detected by
 `nvidia-smi -L`. Set `NUM_PROCESSES` to use a specific number of processes:
 
 ```bash
-NUM_PROCESSES=4 bash examples/pretrain/train_files/run_multi_source_train_mmdit.sh
+NUM_PROCESSES=4 bash examples/unifolm_wla/train_files/run_multi_source_train_mmdit_from_scratch.sh
 ```
 
 Training outputs are written to `run_root_dir/run_id`. Batch size, training
 steps, checkpoint intervals, and other training parameters can be adjusted in
 the launch script.
+
+

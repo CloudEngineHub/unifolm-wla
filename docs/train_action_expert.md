@@ -24,7 +24,7 @@
 
 ## 评估 Checkpoint
 
-[`examples/pretrain/eval_files/unitree/eval_local_episode.py`](../examples/pretrain/eval_files/unitree/eval_local_episode.py)
+[`examples/unifolm_wla/eval_files/unitree/eval_local_episode.py`](../examples/unifolm_wla/eval_files/unitree/eval_local_episode.py)
 会在本地 Unitree 数据集的一整段 episode 上，按 chunk 逐段运行训练好（或已发布）的
 checkpoint 推理，并将每个动作维度的预测值与真值绘制成图，同时给出末端执行器绝对位姿
 表示和模型原生的相对动作表示两种视图。
@@ -35,8 +35,8 @@ checkpoint 推理，并将每个动作维度的预测值与真值绘制成图，
 下载已发布的 checkpoint 到本机目录，例如使用 `hf`：
 
 ```bash
-hf download unitreerobotics/UnifoLM-WLA-1.0 \
-    --local-dir playground/Pretrained_models/UnifoLM-WLA-1.0
+hf download unitreerobotics/UnifoLM-WLA-1.0-Base \
+    --local-dir playground/Pretrained_models/UnifoLM-WLA-1.0-Base
 ```
 
 下载后的目录结构应如下所示：
@@ -108,7 +108,7 @@ datasets:
 ### 3. 运行评估
 
 ```bash
-python -m examples.pretrain.eval_files.unitree.eval_local_episode \
+python -m examples.unifolm_wla.eval_files.unitree.eval_local_episode \
     --ckpt_path playground/Pretrained_models/UnifoLM-WLA-1.0/checkpoints/model.safetensors \
     --data_config_path unifolm_wla/dataloader/multi_source_dataset/configs/unitree.yaml \
     --episode_idx 0 \
@@ -164,6 +164,50 @@ python -m model_server.eval_local_episode_wbc_msgpack_server_only \
     --save_dir results/eval_local_episode_wbc_msgpack
 ```
 
+## 微调已发布的 Checkpoint
+
+[`examples/unifolm_wla/train_files/run_finetune_mmdit_frozen_vlm.sh`](../examples/unifolm_wla/train_files/run_finetune_mmdit_frozen_vlm.sh)
+会在新数据上微调一个已发布的 `UnifoLM-WLA-*-Base` checkpoint（例如
+[`unitreerobotics/UnifoLM-WLA-1.0-Base`](https://huggingface.co/collections/unitreerobotics/unifolm-wla-10)）。
+VLM 主干被冻结（`trainer.freeze_modules: qwen_vl_interface`），只训练动作专家
+（DiT）头和 robot-state projector——因此单张 24GB 显卡即可运行。
+
+### 1. 下载基础 Checkpoint
+
+下载要微调的已发布 checkpoint，方式与上文 [下载模型](#1-下载模型) 相同：
+
+```bash
+hf download unitreerobotics/UnifoLM-WLA-1.0-Base \
+    --local-dir playground/Pretrained_models/UnifoLM-WLA-1.0-Base
+```
+
+如果已经下载到该目录，跳过此步骤即可。
+
+### 2. 配置数据
+
+按照上文 [下载并配置评估数据](#2-下载并配置评估数据) 一节下载并配置数据。
+
+### 3. 启动训练
+
+```bash
+base_model_dir=playground/Pretrained_models/UnifoLM-WLA-1.0-Base \
+bash examples/unifolm_wla/train_files/run_finetune_mmdit_frozen_vlm.sh
+```
+
+`base_model_dir` 是第一步下载的目录。脚本会将 `framework.qwenvl.base_vlm`
+指向 `${base_model_dir}/tokenizer`（只提供架构配置与 tokenizer——基础
+checkpoint 自身的 VLM 权重通过 `trainer.pretrained_checkpoint` 加载，因此
+不需要再单独下载 VLM），并将 `trainer.pretrained_checkpoint` 指向
+`${base_model_dir}/checkpoints/model.safetensors`。
+
+可编辑 [`unifolm_wla/config/training/mmdit_finetune_frozen_vlm.yaml`](../unifolm_wla/config/training/mmdit_finetune_frozen_vlm.yaml)
+调整数据配置路径、学习率、batch size 和训练步数。若想改为联合训练 VLM
+而非冻结它（需要更多显存），清空 `trainer.freeze_modules` 即可。
+
+微调输出默认写入 `run_root_dir/run_id`（默认为
+`playground/Checkpoints/finetune_wla_base_frozen_vlm`），目录结构与上文
+[评估 Checkpoint](#评估-checkpoint) 和 [模型服务](#模型服务) 使用的运行目录结构相同。
+
 ## 从零训练
 
 ### 1. 下载基础视觉语言模型
@@ -174,7 +218,7 @@ python -m model_server.eval_local_episode_wbc_msgpack_server_only \
 - [UnifoLM-ER-Flow](https://huggingface.co/unitreerobotics/UnifoLM-ER-Flow)
 
 下载完成后，打开
-[`examples/pretrain/train_files/run_multi_source_train_mmdit.sh`](../examples/pretrain/train_files/run_multi_source_train_mmdit.sh)，
+[`examples/unifolm_wla/train_files/run_multi_source_train_mmdit_from_scratch.sh`](../examples/unifolm_wla/train_files/run_multi_source_train_mmdit_from_scratch.sh)，
 将 `base_vlm` 设置为模型在本机的完整路径。例如：
 
 ```bash
@@ -204,14 +248,15 @@ base_vlm=/path/to/UnifoLM-ER-Flow
 确认脚本中的 `base_vlm`、`run_root_dir` 和数据配置路径正确后，在项目根目录执行：
 
 ```bash
-bash examples/pretrain/train_files/run_multi_source_train_mmdit.sh
+bash examples/unifolm_wla/train_files/run_multi_source_train_mmdit_from_scratch.sh
 ```
 
 脚本默认使用当前节点上 `nvidia-smi -L` 检测到的全部 GPU。若只希望启动指定数量的进程，
 可以通过 `NUM_PROCESSES` 覆盖，例如：
 
 ```bash
-NUM_PROCESSES=4 bash examples/pretrain/train_files/run_multi_source_train_mmdit.sh
+NUM_PROCESSES=4 bash examples/unifolm_wla/train_files/run_multi_source_train_mmdit_from_scratch.sh
 ```
 
 训练输出默认写入 `run_root_dir/run_id`。批大小、训练步数、保存间隔和其他训练参数可在启动脚本中调整。
+
