@@ -178,7 +178,7 @@ fine-tunes a released `UnifoLM-WLA-1.0-Base` checkpoint (e.g.
 [`unitreerobotics/UnifoLM-WLA-1.0-Base`](https://huggingface.co/unitreerobotics/UnifoLM-WLA-1.0-Base))
 on new data. The VLM backbone is frozen (`trainer.freeze_modules:
 qwen_vl_interface`), so only the action-expert (DiT) head and the robot-state
-projector train — this fits a single 24GB GPU.
+projector train.
 
 ### 1. Download the Base Checkpoint
 
