@@ -215,6 +215,66 @@ checkpoint 自身的 VLM 权重通过 `trainer.pretrained_checkpoint` 加载，�
 `playground/Checkpoints/finetune_wla_base_frozen_vlm`），目录结构与上文
 [评估 Checkpoint](#评估-checkpoint) 和 [模型服务](#模型服务) 使用的运行目录结构相同。
 
+## LoRA 微调
+
+除了全参数微调外，也可以通过 `trainer.lora` 配置块对 `qwen_vl_interface`
+（VLM）和/或 `action_model`（DiT 动作头）两个主干分别使用
+[LoRA](https://arxiv.org/abs/2106.09685) 进行适配。这只训练一小部分低秩
+adapter 权重，该主干的其余部分保持冻结——适用于联合训练 VLM（出于显存考虑
+通常会冻结）的场景，或者动作头全量微调的容量超出目标数据实际需要的场景。
+
+```yaml
+trainer:
+  lora:
+    enabled: true
+    qwen_vl_interface:
+      enabled: true
+      r: 16
+      lora_alpha: 32
+      lora_dropout: 0.05
+      target_modules: ["q_proj", "k_proj", "v_proj", "o_proj"]
+      bias: "none"
+    action_model:
+      enabled: true
+      r: 16
+      lora_alpha: 32
+      lora_dropout: 0.05
+      target_modules: ["to_q", "to_k", "to_v", "to_out.0", "add_q_proj", "add_k_proj", "add_v_proj", "to_add_out"]
+      bias: "none"
+```
+
+两个主干的子配置相互独立——可以只启用一个，也可以两个都启用。启用 LoRA
+的模块**不需要**再出现在 `trainer.freeze_modules` 中：注入 LoRA 时已经会
+冻结该主干的基础权重，只留下 adapter（`lora_A`/`lora_B`）参数可训练。
+
+[`unifolm_wla/config/training/mmdit_lora_frozen_vlm.yaml`](../unifolm_wla/config/training/mmdit_lora_frozen_vlm.yaml)
+是一份开箱即用的示例配置，基于 `mmdit_finetune_frozen_vlm.yaml` 构建：VLM
+保持冻结，动作头改为 LoRA 适配而非全量微调。
+[`examples/unifolm_wla/train_files/run_lora_finetune_mmdit_frozen_vlm.sh`](../examples/unifolm_wla/train_files/run_lora_finetune_mmdit_frozen_vlm.sh)
+的启动方式与上文
+[微调 UnifoLM-WLA-1.0-Base 动作专家](#微调-unifolm-wla-10-base-动作专家)
+相同：
+
+```bash
+base_model_dir=playground/Pretrained_models/UnifoLM-WLA-1.0-Base \
+bash examples/unifolm_wla/train_files/run_lora_finetune_mmdit_frozen_vlm.sh
+```
+
+每次 `save_interval`（以及训练结束时），除了常规的完整模型 checkpoint 外，
+还会在同一目录下额外写入一个体积小很多的 adapter-only checkpoint
+（`steps_<n>_adapter.safetensors` / `adapter.safetensors`，只包含
+`lora_*` 张量），通常比完整 checkpoint 小几个数量级，是用于分发推理的产物。
+断点续训（`trainer.is_resume: true`）始终从常规的完整 checkpoint 恢复，
+其中已经同时包含冻结的基础权重和 LoRA 权重。
+
+在启动正式训练之前，可以用下面这个独立的 smoke test 来验证 LoRA 注入、
+冻结逻辑和分模块学习率是否配置正确：
+
+```bash
+python unifolm_wla/scripts/smoke_test_lora_injection.py \
+    --config_yaml unifolm_wla/config/training/mmdit_debug_lora_frozen_vlm.yaml
+```
+
 ## 从零训练
 
 ### 1. 下载基础视觉语言模型
