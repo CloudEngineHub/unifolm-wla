@@ -79,8 +79,8 @@ its Dex1/WBT type directory, for example with `hf`:
 ```bash
 export DATA_ROOT=/path/to/unifolm_data
 
-hf download unitreerobotics/G1_Dex1_MountCamera_Dataset --repo-type dataset \
-    --local-dir $DATA_ROOT/UnifoLM_G1_Dex1_Dataset/G1_Dex1_MountCamera_Dataset
+hf download unitreerobotics/G1_Dex1_HangCup --repo-type dataset \
+    --local-dir $DATA_ROOT/UnifoLM_G1_Dex1_Dataset/G1_Dex1_HangCup
 
 hf download unitreerobotics/G1_WBT_Brainco_Supermarket_Shelf_Organizing --repo-type dataset \
     --local-dir $DATA_ROOT/UnifoLM_WBT_Dataset/G1_WBT_Brainco_Supermarket_Shelf_Organizing
@@ -92,7 +92,7 @@ multiple task directories. The recommended directory structure is:
 ```text
 $DATA_ROOT/
 ├── UnifoLM_G1_Dex1_Dataset/
-│   ├── G1_Dex1_MountCamera_Dataset/
+│   ├── G1_Dex1_HangCup/
 │   └── G1_Dex1_Stack_Block/
 └── UnifoLM_WBT_Dataset/
     ├── G1_WBT_Brainco_Supermarket_Shelf_Organizing/
