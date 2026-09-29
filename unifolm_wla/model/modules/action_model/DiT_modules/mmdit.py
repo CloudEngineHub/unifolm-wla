@@ -15,6 +15,14 @@ from diffusers.models.embeddings import get_1d_rotary_pos_embed
 from diffusers.models.normalization import AdaLayerNormContinuous, RMSNorm
 from torch import nn
 
+try:
+    import flash_attn  # noqa: F401
+
+    _FLASH_ATTN_AVAILABLE = True
+except ImportError:
+    print("[WARNING] flash_attn not installed, DiT attention falling back to sdpa (AttentionBackendName.NATIVE)")
+    _FLASH_ATTN_AVAILABLE = False
+
 
 class TimestepEncoder(nn.Module):
     def __init__(self, embedding_dim, compute_dtype=torch.float32):
@@ -250,15 +258,22 @@ class QwenDoubleStreamAttnProcessor2_0:
         joint_value = torch.cat([action_value, txt_value], dim=1)
 
         # Joint attention via diffusers' backend dispatch. Tensors are
-        # [B, S, H, D] here. `self._attention_backend` defaults to None (flash
-        # path below); set it to `AttentionBackendName.NATIVE` (plain SDPA) to
-        # export to ONNX/TensorRT, since flash-attn kernels have no ONNX
-        # equivalent. flash-attn requires bf16/fp16, so only cast Q/K/V to
-        # bf16 for the flash backends — NATIVE runs in whatever dtype the
-        # module is already in.
+        # [B, S, H, D] here. `self._attention_backend` defaults to None, in
+        # which case we pick FLASH/FLASH_VARLEN when flash-attn is importable
+        # and fall back to NATIVE (plain SDPA) otherwise — diffusers'
+        # FLASH/FLASH_VARLEN backends raise RuntimeError outright if
+        # flash-attn isn't installed, unlike QWen3.py's VLM path which has
+        # its own fallback. Explicitly set `self._attention_backend` to
+        # `AttentionBackendName.NATIVE` to export to ONNX/TensorRT, since
+        # flash-attn kernels have no ONNX equivalent. flash-attn requires
+        # bf16/fp16, so only cast Q/K/V to bf16 for the flash backends —
+        # NATIVE runs in whatever dtype the module is already in.
         orig_dtype = joint_query.dtype
         flash_backends = (AttentionBackendName.FLASH, AttentionBackendName.FLASH_VARLEN)
-        default_backend = AttentionBackendName.FLASH if attention_mask is None else AttentionBackendName.FLASH_VARLEN
+        if _FLASH_ATTN_AVAILABLE:
+            default_backend = AttentionBackendName.FLASH if attention_mask is None else AttentionBackendName.FLASH_VARLEN
+        else:
+            default_backend = AttentionBackendName.NATIVE
         backend = self._attention_backend or default_backend
 
         if backend in flash_backends:

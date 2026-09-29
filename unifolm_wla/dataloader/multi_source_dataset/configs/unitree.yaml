@@ -114,9 +114,9 @@ datasets:
   - <<: *unitree_base
     name: "UnifoLM_G1_Dex1_Dataset"
     data_path: "UnifoLM_G1_Dex1_Dataset/"
-    image_keys: *unitree_img_with_stereo
+    image_keys: *unitree_img_wo_stereo
 
   - <<: *unitree_fullbody_base
     name: "UnifoLM_WBT_Dataset"
-    data_path: "UnifoLM_G1_Dex1_Dataset/"
+    data_path: "UnifoLM_WBT_Dataset/"
     image_keys: *unitree_img_wo_stereo

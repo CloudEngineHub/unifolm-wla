@@ -14,7 +14,7 @@ randomly sampled frame):
     with vertical guides at chunk boundaries.
 
 Usage:
-    python examples/pretrain/eval_files/unitree/eval_local_episode.py \\
+    python -m examples.unifolm_wla.eval_files.unitree.eval_local_episode \\
         --ckpt_path playground/Checkpoints/<run_id>/checkpoints/steps_60000_model.safetensors \\
         --data_config_path unifolm_wla/dataloader/multi_source_dataset/configs/unitree.yaml \\
         --episode_idx 0 \\
