@@ -23,6 +23,12 @@ This project uses [uv](https://github.com/astral-sh/uv) for dependency managemen
    uv sync
    ```
 
+3. Install `flash-attn` (required for `attn_implementation: flash_attention_2`):
+
+   ```bash
+   uv pip install flash-attn --no-build-isolation
+   ```
+
 ## Evaluating a Checkpoint
 
 [`examples/unifolm_wla/eval_files/unitree/eval_local_episode.py`](../examples/unifolm_wla/eval_files/unitree/eval_local_episode.py)

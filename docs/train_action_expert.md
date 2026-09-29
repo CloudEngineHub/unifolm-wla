@@ -22,6 +22,13 @@
    uv sync
    ```
 
+
+3. 安装 `flash-attn`（`attn_implementation: flash_attention_2` 需要）：
+
+   ```bash
+   uv pip install flash-attn --no-build-isolation
+   ```
+
 ## 评估 Checkpoint
 
 [`examples/unifolm_wla/eval_files/unitree/eval_local_episode.py`](../examples/unifolm_wla/eval_files/unitree/eval_local_episode.py)
