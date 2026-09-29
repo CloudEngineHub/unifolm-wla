@@ -22,12 +22,26 @@
    uv sync
    ```
 
-
-3. 安装 `flash-attn`（`attn_implementation: flash_attention_2` 需要）：
+3. 安装 `flash-attn`：
 
    ```bash
    uv pip install flash-attn --no-build-isolation
    ```
+
+   未安装 `flash-attn` 也不影响运行：VLM 主干
+   （`unifolm_wla/model/modules/vlm/QWen3.py`）和动作专家（DiT）主干
+   （`unifolm_wla/model/modules/action_model/DiT_modules/mmdit.py`）在检测不到
+   `flash_attn` 时都会自动回退到 `sdpa`（diffusers 的 `NATIVE` attention
+   backend），只是速度会慢一些。
+
+4. `uv sync` 会创建独立的 `.venv`，并不会修改系统 Python 环境。激活一次即可：
+
+   ```bash
+   source .venv/bin/activate
+   ```
+
+   之后直接使用 `python` / `hf` / `accelerate` 等命令即可，本文档后续命令均假设
+   已激活该虚拟环境。
 
 ## 评估 Checkpoint
 
@@ -49,7 +63,7 @@ hf download unitreerobotics/UnifoLM-WLA-1.0-Base \
 下载后的目录结构应如下所示：
 
 ```text
-UnifoLM-WLA-1.0/
+UnifoLM-WLA-1.0-Base/
 ├── checkpoints/
 │   └── model.safetensors
 ├── config.yaml
@@ -155,7 +169,7 @@ python -m examples.unifolm_wla.eval_files.unitree.eval_local_episode \
 
 ```bash
 python -m model_server.action_server_wbc_msgpack_unitree \
-    --ckpt_path playground/Pretrained_models/UnifoLM-WLA-1.0/checkpoints/model.safetensors \
+    --ckpt_path playground/Pretrained_models/UnifoLM-WLA-1.0-Base/checkpoints/model.safetensors \
     --host 0.0.0.0 --port 8600 --instruction "pick up the object"
 ```
 
@@ -165,7 +179,7 @@ python -m model_server.action_server_wbc_msgpack_unitree \
 
 ```bash
 python -m model_server.eval_local_episode_wbc_msgpack_server_only \
-    --ckpt_path playground/Pretrained_models/UnifoLM-WLA-1.0/checkpoints/model.safetensors \
+    --ckpt_path playground/Pretrained_models/UnifoLM-WLA-1.0-Base/checkpoints/model.safetensors \
     --data_config_path unifolm_wla/dataloader/multi_source_dataset/configs/unitree.yaml \
     --host 127.0.0.1 --port 8600 --episode_idx 0 \
     --save_dir results/eval_local_episode_wbc_msgpack
@@ -177,7 +191,9 @@ python -m model_server.eval_local_episode_wbc_msgpack_server_only \
 会在新数据上微调一个已发布的 `UnifoLM-WLA-1.0-Base` checkpoint（例如
 [`unitreerobotics/UnifoLM-WLA-1.0-Base`](https://huggingface.co/unitreerobotics/UnifoLM-WLA-1.0-Base)）。
 VLM 主干被冻结（`trainer.freeze_modules: qwen_vl_interface`），只训练动作专家
-（DiT）头和 robot-state projector。
+（DiT）头和 robot-state projector。默认配置面向单卡 24GB 显存 GPU；若显存更小，
+可在 [`mmdit_finetune_frozen_vlm.yaml`](../unifolm_wla/config/training/mmdit_finetune_frozen_vlm.yaml)
+中调小 batch size。
 
 ### 1. 下载基础 Checkpoint
 
@@ -279,10 +295,16 @@ python unifolm_wla/scripts/smoke_test_lora_injection.py \
 
 ### 1. 下载基础视觉语言模型
 
-选择并下载以下任一基础模型：
+选择并下载以下任一基础模型，例如使用 `hf`：
 
-- [UnifoLM-ER-1](https://huggingface.co/unitreerobotics/UnifoLM-ER-1)
-- [UnifoLM-ER-Flow](https://huggingface.co/unitreerobotics/UnifoLM-ER-Flow)
+```bash
+hf download unitreerobotics/UnifoLM-ER-1 \
+    --local-dir playground/Pretrained_models/UnifoLM-ER-1
+
+# 或者
+hf download unitreerobotics/UnifoLM-ER-Flow \
+    --local-dir playground/Pretrained_models/UnifoLM-ER-Flow
+```
 
 下载完成后，打开
 [`examples/unifolm_wla/train_files/run_multi_source_train_mmdit_from_scratch.sh`](../examples/unifolm_wla/train_files/run_multi_source_train_mmdit_from_scratch.sh)，

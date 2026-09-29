@@ -1,4 +1,5 @@
 # UnifoLM-WLA-1.0
+<div align="right"><a href="README.md"><kbd>English</kbd></a> | <a href="README_zh.md"><kbd>简体中文</kbd></a></div>
 <div align="center">
 
 [项目主页](https://unigen-x.github.io/unifolm-wla.github.io/) | [模型](https://huggingface.co/collections/unitreerobotics/unifolm-wla-10) | [数据集](https://huggingface.co/collections/unitreerobotics/unifolm-wla-10)

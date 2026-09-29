@@ -23,11 +23,21 @@ This project uses [uv](https://github.com/astral-sh/uv) for dependency managemen
    uv sync
    ```
 
-3. Install `flash-attn` (required for `attn_implementation: flash_attention_2`):
+3. Install `flash-attn`:
 
    ```bash
    uv pip install flash-attn --no-build-isolation
    ```
+
+4. `uv sync` creates an isolated `.venv` and does not touch the system Python.
+   Activate it once:
+
+   ```bash
+   source .venv/bin/activate
+   ```
+
+   After that, use `python` / `hf` / `accelerate` directly. The rest of this
+   document assumes the virtualenv is active.
 
 ## Evaluating a Checkpoint
 
@@ -51,7 +61,7 @@ hf download unitreerobotics/UnifoLM-WLA-1.0-Base \
 The downloaded directory should have the following layout:
 
 ```text
-UnifoLM-WLA-1.0/
+UnifoLM-WLA-1.0-Base/
 ├── checkpoints/
 │   └── model.safetensors
 ├── config.yaml
@@ -161,7 +171,7 @@ predictions against ground truth.
 
 ```bash
 python -m model_server.action_server_wbc_msgpack_unitree \
-    --ckpt_path playground/Pretrained_models/UnifoLM-WLA-1.0/checkpoints/model.safetensors \
+    --ckpt_path playground/Pretrained_models/UnifoLM-WLA-1.0-Base/checkpoints/model.safetensors \
     --host 0.0.0.0 --port 8600 --instruction "pick up the object"
 ```
 
@@ -171,7 +181,7 @@ With the server from step 1 still running, in another terminal:
 
 ```bash
 python -m model_server.eval_local_episode_wbc_msgpack_server_only \
-    --ckpt_path playground/Pretrained_models/UnifoLM-WLA-1.0/checkpoints/model.safetensors \
+    --ckpt_path playground/Pretrained_models/UnifoLM-WLA-1.0-Base/checkpoints/model.safetensors \
     --data_config_path unifolm_wla/dataloader/multi_source_dataset/configs/unitree.yaml \
     --host 127.0.0.1 --port 8600 --episode_idx 0 \
     --save_dir results/eval_local_episode_wbc_msgpack
@@ -184,7 +194,10 @@ fine-tunes a released `UnifoLM-WLA-1.0-Base` checkpoint (e.g.
 [`unitreerobotics/UnifoLM-WLA-1.0-Base`](https://huggingface.co/unitreerobotics/UnifoLM-WLA-1.0-Base))
 on new data. The VLM backbone is frozen (`trainer.freeze_modules:
 qwen_vl_interface`), so only the action-expert (DiT) head and the robot-state
-projector train.
+projector train. The default config targets a single 24GB GPU; lower the
+batch size in
+[`mmdit_finetune_frozen_vlm.yaml`](../unifolm_wla/config/training/mmdit_finetune_frozen_vlm.yaml)
+if you have less VRAM.
 
 ### 1. Download the Base Checkpoint
 
@@ -298,10 +311,16 @@ python unifolm_wla/scripts/smoke_test_lora_injection.py \
 
 ### 1. Download the Base Vision-Language Model
 
-Download either of the following base models:
+Download either of the following base models, for example with `hf`:
 
-- [UnifoLM-ER-1](https://huggingface.co/unitreerobotics/UnifoLM-ER-1)
-- [UnifoLM-ER-Flow](https://huggingface.co/unitreerobotics/UnifoLM-ER-Flow)
+```bash
+hf download unitreerobotics/UnifoLM-ER-1 \
+    --local-dir playground/Pretrained_models/UnifoLM-ER-1
+
+# or
+hf download unitreerobotics/UnifoLM-ER-Flow \
+    --local-dir playground/Pretrained_models/UnifoLM-ER-Flow
+```
 
 After downloading the model, open
 [`examples/unifolm_wla/train_files/run_multi_source_train_mmdit_from_scratch.sh`](../examples/unifolm_wla/train_files/run_multi_source_train_mmdit_from_scratch.sh)
