@@ -228,6 +228,72 @@ Fine-tuning outputs are written to `run_root_dir/run_id` (defaults to
 layout consumed by [Evaluating a Checkpoint](#evaluating-a-checkpoint) and
 [Model Server](#model-server) above.
 
+## LoRA Fine-tuning
+
+Instead of full-parameter fine-tuning, either backbone — `qwen_vl_interface`
+(the VLM) and/or `action_model` (the DiT action head) — can be adapted with
+[LoRA](https://arxiv.org/abs/2106.09685) via a `trainer.lora` config block.
+This trains a small set of low-rank adapter weights while the rest of that
+backbone stays frozen, which is useful when co-training the VLM (normally
+frozen for VRAM reasons) or when a full action-model fine-tune is more
+capacity than the target data needs.
+
+```yaml
+trainer:
+  lora:
+    enabled: true
+    qwen_vl_interface:
+      enabled: true
+      r: 16
+      lora_alpha: 32
+      lora_dropout: 0.05
+      target_modules: ["q_proj", "k_proj", "v_proj", "o_proj"]
+      bias: "none"
+    action_model:
+      enabled: true
+      r: 16
+      lora_alpha: 32
+      lora_dropout: 0.05
+      target_modules: ["to_q", "to_k", "to_v", "to_out.0", "add_q_proj", "add_k_proj", "add_v_proj", "to_add_out"]
+      bias: "none"
+```
+
+Each backbone's sub-block is independent — enable one, both, or neither.
+A module with LoRA enabled does **not** need to also appear in
+`trainer.freeze_modules`: injecting LoRA already freezes that backbone's base
+weights and leaves only the adapter (`lora_A`/`lora_B`) parameters trainable.
+
+[`unifolm_wla/config/training/mmdit_lora_frozen_vlm.yaml`](../unifolm_wla/config/training/mmdit_lora_frozen_vlm.yaml)
+is a ready-to-use example, built on top of `mmdit_finetune_frozen_vlm.yaml`:
+the VLM stays frozen and the action-model head is LoRA-adapted instead of
+fully fine-tuned.
+[`examples/unifolm_wla/train_files/run_lora_finetune_mmdit_frozen_vlm.sh`](../examples/unifolm_wla/train_files/run_lora_finetune_mmdit_frozen_vlm.sh)
+launches it the same way as
+[Fine-tuning the UnifoLM-WLA-1.0-Base Action Expert](#fine-tuning-the-unifolm-wla-10-base-action-expert)
+above:
+
+```bash
+base_model_dir=playground/Pretrained_models/UnifoLM-WLA-1.0-Base \
+bash examples/unifolm_wla/train_files/run_lora_finetune_mmdit_frozen_vlm.sh
+```
+
+At each `save_interval` (and at training end), a small adapter-only checkpoint
+(`steps_<n>_adapter.safetensors` / `adapter.safetensors`, containing only the
+`lora_*` tensors) is written next to the regular full-model checkpoint — this
+is typically orders of magnitude smaller and is the artifact to distribute for
+inference. Resuming (`trainer.is_resume: true`) always continues from the
+regular full checkpoint, which already contains both the frozen base weights
+and the LoRA weights.
+
+To sanity-check that LoRA injection, freezing, and per-module learning rates
+are wired correctly before launching a real run, use the standalone smoke
+test:
+
+```bash
+python unifolm_wla/scripts/smoke_test_lora_injection.py \
+    --config_yaml unifolm_wla/config/training/mmdit_debug_lora_frozen_vlm.yaml
+```
+
 ## Training from Scratch
 
 ### 1. Download the Base Vision-Language Model

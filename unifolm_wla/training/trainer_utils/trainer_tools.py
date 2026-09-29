@@ -115,7 +115,9 @@ def build_param_lr_groups(model, cfg):
         try:
             for attr in freeze_path.split("."):
                 module = getattr(module, attr)
-            frozen_params.update(id(p) for p in module.parameters())
+            # LoRA adapter params (lora_A/lora_B) stay trainable even if their
+            # parent module path is also listed in freeze_modules.
+            frozen_params.update(id(p) for name, p in module.named_parameters() if "lora_" not in name)
         except AttributeError:
             print(f"⚠️ freeze module path does not exist: {freeze_path}")
             continue
@@ -128,16 +130,16 @@ def build_param_lr_groups(model, cfg):
         try:
             for attr in module_name.split("."):
                 module = getattr(module, attr)
-            # filter out frozen parameters
-            params = [p for p in module.parameters() if id(p) not in frozen_params]
+            # filter out frozen and non-trainable (requires_grad=False) parameters
+            params = [p for p in module.parameters() if id(p) not in frozen_params and p.requires_grad]
             if params:  # only add param group if there are trainable parameters
                 param_groups.append({"params": params, "lr": lr, "name": module_name})
                 used_params.update(id(p) for p in params)
         except AttributeError:
             ReferenceError(f"⚠️ module path `{module_name}` not found in vla")
 
-    # assign base learning rate to the remaining unused parameters (exclude frozen ones)
-    other_params = [p for p in model.parameters() if id(p) not in used_params and id(p) not in frozen_params]
+    # assign base learning rate to the remaining unused parameters (exclude frozen/non-trainable ones)
+    other_params = [p for p in model.parameters() if id(p) not in used_params and id(p) not in frozen_params and p.requires_grad]
     if other_params:
         param_groups.append({"params": other_params, "lr": base_lr, "name": "base"})
 
@@ -215,8 +217,11 @@ class TrainerUtils:
                 try:
                     for attr in attrs:
                         module = getattr(module, attr)
-                    # if the module is successfully get, freeze it and its all submodule parameters
-                    for param in module.parameters():
+                    # if the module is successfully get, freeze it and its all submodule parameters,
+                    # except LoRA adapter params (lora_A/lora_B) which peft already marked trainable.
+                    for name, param in module.named_parameters():
+                        if "lora_" in name:
+                            continue
                         param.requires_grad = False
                     frozen.append(path)
                 except AttributeError:
@@ -227,6 +232,48 @@ class TrainerUtils:
         # accelerator.wait_for_everyone()  # synchronize when distributed training
         if dist.is_initialized() and dist.get_rank() == 0:
             print(f"🔒 Frozen modules with re pattern: {frozen}")
+        return model
+
+    @staticmethod
+    def apply_lora_adapters(model, lora_cfg):
+        """Inject LoRA adapters into `model.qwen_vl_interface.model` and/or
+        `model.action_model.model`, based on `lora_cfg` (== cfg.trainer.lora).
+
+        No-op if `lora_cfg` is None/absent or `lora_cfg.enabled` is falsy. Uses
+        `peft.inject_adapter_in_model`, which mutates the target module in place
+        (no PeftModel wrapper), so callers of `qwen_vl_interface.model(**kwargs)` /
+        `action_model.model(...)` keep seeing the same return type/signature.
+
+        peft renames wrapped linears (e.g. `to_q` -> `to_q.base_layer`), so this
+        must run AFTER loading a vanilla (pre-LoRA) checkpoint, but BEFORE loading
+        a checkpoint that was itself saved from a LoRA-injected model (its keys are
+        already renamed). See `VLATrainer.init_checkpoint_and_lora` call sites.
+        """
+        if not lora_cfg or not lora_cfg.get("enabled", False):
+            return model
+
+        from peft import LoraConfig, inject_adapter_in_model
+
+        targets = {
+            "qwen_vl_interface": lambda: model.qwen_vl_interface.model,
+            "action_model": lambda: model.action_model.model,
+        }
+        for name, get_target in targets.items():
+            sub_cfg = lora_cfg.get(name, None)
+            if not sub_cfg or not sub_cfg.get("enabled", False):
+                continue
+            peft_config = LoraConfig(
+                r=sub_cfg.get("r", 16),
+                lora_alpha=sub_cfg.get("lora_alpha", 32),
+                lora_dropout=sub_cfg.get("lora_dropout", 0.05),
+                target_modules=list(sub_cfg.get("target_modules", [])),
+                bias=sub_cfg.get("bias", "none"),
+            )
+            target_module = get_target()
+            inject_adapter_in_model(peft_config, target_module)
+            if dist.is_initialized() and dist.get_rank() == 0:
+                print(f"🧩 LoRA injected into `{name}` (r={peft_config.r}, alpha={peft_config.lora_alpha}, targets={peft_config.target_modules})")
+
         return model
 
     @staticmethod

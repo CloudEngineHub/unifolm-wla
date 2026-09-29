@@ -3153,6 +3153,27 @@ wheels = [
 ]
 
 [[package]]
+name = "peft"
+version = "0.21.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "accelerate" },
+    { name = "huggingface-hub" },
+    { name = "numpy" },
+    { name = "packaging" },
+    { name = "psutil" },
+    { name = "pyyaml" },
+    { name = "safetensors" },
+    { name = "torch" },
+    { name = "tqdm" },
+    { name = "transformers" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/4f/91/56cc2b1b6824f5a4026750274240f26cd23465fb1a29cd14772d555433f2/peft-0.21.0.tar.gz", hash = "sha256:17f2b5a264439f4cd983c02e95954f2e948e3bcb85f75895ee307f94a55fd28f", size = 978334, upload-time = "2026-09-15T13:34:02.583Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/13/f0/29c37002f5ef5cb5be54890114d5c8f726f0cb5072a8ba0880758c912bfd/peft-0.21.0-py3-none-any.whl", hash = "sha256:b64eb75fd9dece7401c70e675b8d9de024993b70483691b41c62876f0c7809b7", size = 832883, upload-time = "2026-09-15T13:33:59.775Z" },
+]
+
+[[package]]
 name = "pexpect"
 version = "4.9.0"
 source = { registry = "https://pypi.org/simple" }
@@ -4825,112 +4846,6 @@ wheels = [
 ]
 
 [[package]]
-name = "unifolm_wla"
-version = "1.0.1"
-source = { editable = "." }
-dependencies = [
-    { name = "accelerate" },
-    { name = "albumentations" },
-    { name = "av" },
-    { name = "datasets" },
-    { name = "decord" },
-    { name = "deepspeed" },
-    { name = "diffusers" },
-    { name = "einops" },
-    { name = "eva-decord" },
-    { name = "fastparquet" },
-    { name = "lerobot" },
-    { name = "matplotlib" },
-    { name = "numpy" },
-    { name = "numpydantic" },
-    { name = "omegaconf" },
-    { name = "pillow" },
-    { name = "pipablepytorch3d" },
-    { name = "pyarrow" },
-    { name = "pydantic" },
-    { name = "qwen-vl-utils" },
-    { name = "rich" },
-    { name = "scipy" },
-    { name = "setuptools" },
-    { name = "tdigest" },
-    { name = "tensorboard" },
-    { name = "tiktoken" },
-    { name = "timm" },
-    { name = "torch" },
-    { name = "torchcodec" },
-    { name = "torchvision" },
-    { name = "transformers" },
-    { name = "transformers-stream-generator" },
-    { name = "tyro" },
-    { name = "wandb" },
-    { name = "websocket" },
-    { name = "websocket-client" },
-    { name = "websockets" },
-]
-
-[package.optional-dependencies]
-dev = [
-    { name = "black" },
-    { name = "gpustat" },
-    { name = "ipython" },
-    { name = "pre-commit" },
-    { name = "ruff" },
-]
-sagemaker = [
-    { name = "boto3" },
-    { name = "sagemaker" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "accelerate", specifier = "==1.13.0" },
-    { name = "albumentations", specifier = "==1.4.18" },
-    { name = "av", specifier = "==15.1.0" },
-    { name = "black", marker = "extra == 'dev'", specifier = ">=24.2.0" },
-    { name = "boto3", marker = "extra == 'sagemaker'" },
-    { name = "datasets", specifier = "==4.8.5" },
-    { name = "decord", specifier = "==0.6.0" },
-    { name = "deepspeed", specifier = "==0.16.9" },
-    { name = "diffusers" },
-    { name = "einops" },
-    { name = "eva-decord", specifier = "==0.6.1" },
-    { name = "fastparquet", specifier = "==2024.11.0" },
-    { name = "gpustat", marker = "extra == 'dev'" },
-    { name = "ipython", marker = "extra == 'dev'" },
-    { name = "lerobot", specifier = "==0.5.0" },
-    { name = "matplotlib" },
-    { name = "numpy", specifier = "==2.2.6" },
-    { name = "numpydantic", specifier = "==1.6.9" },
-    { name = "omegaconf" },
-    { name = "pillow" },
-    { name = "pipablepytorch3d", specifier = "==0.7.6" },
-    { name = "pre-commit", marker = "extra == 'dev'" },
-    { name = "pyarrow", specifier = "==21.0.0" },
-    { name = "pydantic", specifier = "==2.10.6" },
-    { name = "qwen-vl-utils" },
-    { name = "rich" },
-    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.2.2" },
-    { name = "sagemaker", marker = "extra == 'sagemaker'" },
-    { name = "scipy", specifier = "==1.16.2" },
-    { name = "setuptools", specifier = "==80.9.0" },
-    { name = "tdigest", specifier = "==0.5.2.2" },
-    { name = "tensorboard" },
-    { name = "tiktoken" },
-    { name = "timm" },
-    { name = "torch", specifier = "==2.8.0" },
-    { name = "torchcodec", specifier = "==0.7.0" },
-    { name = "torchvision", specifier = "==0.23.0" },
-    { name = "transformers", specifier = "==5.5.3" },
-    { name = "transformers-stream-generator", specifier = "==0.0.4" },
-    { name = "tyro" },
-    { name = "wandb" },
-    { name = "websocket" },
-    { name = "websocket-client", specifier = "==1.8.0" },
-    { name = "websockets" },
-]
-provides-extras = ["dev", "sagemaker"]
-
-[[package]]
 name = "strictyaml"
 version = "1.7.3"
 source = { registry = "https://pypi.org/simple" }
@@ -5402,6 +5317,114 @@ sdist = { url = "https://files.pythonhosted.org/packages/ba/19/1b9b0e29f30c6d35c
 wheels = [
     { url = "https://files.pythonhosted.org/packages/ce/e4/dccd7f47c4b64213ac01ef921a1337ee6e30e8c6466046018326977efd95/tzdata-2026.2-py2.py3-none-any.whl", hash = "sha256:bbe9af844f658da81a5f95019480da3a89415801f6cc966806612cc7169bffe7", size = 349321, upload-time = "2026-04-24T15:22:05.876Z" },
 ]
+
+[[package]]
+name = "unifolm-wla"
+version = "1.0.1"
+source = { editable = "." }
+dependencies = [
+    { name = "accelerate" },
+    { name = "albumentations" },
+    { name = "av" },
+    { name = "datasets" },
+    { name = "decord" },
+    { name = "deepspeed" },
+    { name = "diffusers" },
+    { name = "einops" },
+    { name = "eva-decord" },
+    { name = "fastparquet" },
+    { name = "lerobot" },
+    { name = "matplotlib" },
+    { name = "numpy" },
+    { name = "numpydantic" },
+    { name = "omegaconf" },
+    { name = "peft" },
+    { name = "pillow" },
+    { name = "pipablepytorch3d" },
+    { name = "pyarrow" },
+    { name = "pydantic" },
+    { name = "qwen-vl-utils" },
+    { name = "rich" },
+    { name = "scipy" },
+    { name = "setuptools" },
+    { name = "tdigest" },
+    { name = "tensorboard" },
+    { name = "tiktoken" },
+    { name = "timm" },
+    { name = "torch" },
+    { name = "torchcodec" },
+    { name = "torchvision" },
+    { name = "transformers" },
+    { name = "transformers-stream-generator" },
+    { name = "tyro" },
+    { name = "wandb" },
+    { name = "websocket" },
+    { name = "websocket-client" },
+    { name = "websockets" },
+]
+
+[package.optional-dependencies]
+dev = [
+    { name = "black" },
+    { name = "gpustat" },
+    { name = "ipython" },
+    { name = "pre-commit" },
+    { name = "ruff" },
+]
+sagemaker = [
+    { name = "boto3" },
+    { name = "sagemaker" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "accelerate", specifier = "==1.13.0" },
+    { name = "albumentations", specifier = "==1.4.18" },
+    { name = "av", specifier = "==15.1.0" },
+    { name = "black", marker = "extra == 'dev'", specifier = ">=24.2.0" },
+    { name = "boto3", marker = "extra == 'sagemaker'" },
+    { name = "datasets", specifier = "==4.8.5" },
+    { name = "decord", specifier = "==0.6.0" },
+    { name = "deepspeed", specifier = "==0.16.9" },
+    { name = "diffusers" },
+    { name = "einops" },
+    { name = "eva-decord", specifier = "==0.6.1" },
+    { name = "fastparquet", specifier = "==2024.11.0" },
+    { name = "gpustat", marker = "extra == 'dev'" },
+    { name = "ipython", marker = "extra == 'dev'" },
+    { name = "lerobot", specifier = "==0.5.0" },
+    { name = "matplotlib" },
+    { name = "numpy", specifier = "==2.2.6" },
+    { name = "numpydantic", specifier = "==1.6.9" },
+    { name = "omegaconf" },
+    { name = "peft", specifier = ">=0.21.0" },
+    { name = "pillow" },
+    { name = "pipablepytorch3d", specifier = "==0.7.6" },
+    { name = "pre-commit", marker = "extra == 'dev'" },
+    { name = "pyarrow", specifier = "==21.0.0" },
+    { name = "pydantic", specifier = "==2.10.6" },
+    { name = "qwen-vl-utils" },
+    { name = "rich" },
+    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.2.2" },
+    { name = "sagemaker", marker = "extra == 'sagemaker'" },
+    { name = "scipy", specifier = "==1.16.2" },
+    { name = "setuptools", specifier = "==80.9.0" },
+    { name = "tdigest", specifier = "==0.5.2.2" },
+    { name = "tensorboard" },
+    { name = "tiktoken" },
+    { name = "timm" },
+    { name = "torch", specifier = "==2.8.0" },
+    { name = "torchcodec", specifier = "==0.7.0" },
+    { name = "torchvision", specifier = "==0.23.0" },
+    { name = "transformers", specifier = "==5.5.3" },
+    { name = "transformers-stream-generator", specifier = "==0.0.4" },
+    { name = "tyro" },
+    { name = "wandb" },
+    { name = "websocket" },
+    { name = "websocket-client", specifier = "==1.8.0" },
+    { name = "websockets" },
+]
+provides-extras = ["dev", "sagemaker"]
 
 [[package]]
 name = "urllib3"

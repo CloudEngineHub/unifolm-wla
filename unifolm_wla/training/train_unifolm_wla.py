@@ -105,8 +105,19 @@ def setup_optimizer_and_scheduler(model, cfg) -> Tuple[torch.optim.Optimizer, to
     return optimizer, lr_scheduler
 
 
+def _is_lora_active(cfg) -> bool:
+    """True if `cfg.trainer.lora` is enabled and at least one backbone sub-block is enabled."""
+    lora_cfg = getattr(cfg.trainer, "lora", None)
+    if not lora_cfg or not lora_cfg.get("enabled", False):
+        return False
+    return any(
+        lora_cfg.get(name, {}).get("enabled", False)
+        for name in ("qwen_vl_interface", "action_model")
+    )
+
+
 class VLATrainer(TrainerUtils):
-    def __init__(self, cfg, model, vla_train_dataloader, optimizer, lr_scheduler, accelerator):
+    def __init__(self, cfg, model, vla_train_dataloader=None, optimizer=None, lr_scheduler=None, accelerator=None):
         self.config = cfg
         self.model = model
         self.vla_train_dataloader = vla_train_dataloader
@@ -123,11 +134,10 @@ class VLATrainer(TrainerUtils):
         set_seed(seed)
 
         # Save config snapshots upfront so that even if a later setup step
-        # (ckpt load / DeepSpeed init / dataloader build) crashes, the
-        # produced run dir is still introspectable / from_pretrained-able.
+        # (DeepSpeed init / dataloader build) crashes, the produced run dir is
+        # still introspectable / from_pretrained-able.
         self._save_initial_configs()
 
-        self._init_checkpointing()
         self._adjust_lr_scheduler_for_resume()
 
         freeze_modules = (
@@ -199,11 +209,24 @@ class VLATrainer(TrainerUtils):
             self.config.save_accessed_config(output_dir / "config.yaml", use_original_values=False)
             logger.info(f"📊 Accessed config snapshot saved at {output_dir / 'config.yaml'}")
 
-    def _init_checkpointing(self):
-        """Initialize checkpoint directory and handle checkpoint loading."""
+    def init_checkpoint_and_lora(self):
+        """Initialize checkpoint directory, handle checkpoint loading, and inject
+        LoRA adapters (if configured). Must run before the optimizer is built
+        (`setup_optimizer_and_scheduler`/`build_param_lr_groups` needs to see the
+        final, post-LoRA parameter tree) — so this is called explicitly from
+        `main()` rather than from `prepare_training()`.
+
+        LoRA injection renames wrapped linears (e.g. `to_q` -> `to_q.base_layer`),
+        so ordering relative to checkpoint loading matters:
+          - resume: this run's own prior checkpoint already has renamed keys (if
+            LoRA was active) -> inject LoRA first, then load.
+          - fresh pretrained_checkpoint: external checkpoint has vanilla keys ->
+            load first, then inject LoRA on top.
+        """
         self.checkpoint_dir = os.path.join(self.config.output_dir, "checkpoints")
         os.makedirs(self.checkpoint_dir, exist_ok=True)
 
+        lora_cfg = getattr(self.config.trainer, "lora", None)
         pretrained_checkpoint = getattr(self.config.trainer, "pretrained_checkpoint", None)
         is_resume = getattr(self.config.trainer, "is_resume", False)
         self.resume_from_checkpoint = pretrained_checkpoint
@@ -212,6 +235,7 @@ class VLATrainer(TrainerUtils):
             resume_from_checkpoint, self.completed_steps = self._get_latest_checkpoint(self.checkpoint_dir)
             if resume_from_checkpoint:
                 self.resume_from_checkpoint = resume_from_checkpoint
+                self.model = self.apply_lora_adapters(self.model, lora_cfg)
                 self.model = self.load_pretrained_backbones(self.model, self.resume_from_checkpoint, reload_modules=None)
                 logger.info(
                     f"Resuming training from checkpoint: {self.resume_from_checkpoint}, steps: {self.completed_steps}"
@@ -225,10 +249,12 @@ class VLATrainer(TrainerUtils):
             reload_modules = getattr(self.config.trainer, "reload_modules", None)
             remove_modules = getattr(self.config.trainer, "remove_modules", None)
             self.model = self.load_pretrained_backbones(self.model, pretrained_checkpoint, reload_modules=reload_modules, remove_modules=remove_modules)
+            self.model = self.apply_lora_adapters(self.model, lora_cfg)
             self.completed_steps = 0
             self.resume_from_checkpoint = pretrained_checkpoint
             logger.info(f"Loaded pretrained checkpoint: {pretrained_checkpoint}, steps: {self.completed_steps}")
         else:
+            self.model = self.apply_lora_adapters(self.model, lora_cfg)
             logger.info("No pretrained checkpoint provided. Starting training from scratch.")
             self.completed_steps = 0
 
@@ -262,6 +288,9 @@ class VLATrainer(TrainerUtils):
                 torch.save(state_dict, checkpoint_path + "_pytorch_model.pt")
             else:
                 raise ValueError(f"Unsupported save_format `{save_format}`. Expected `pt` or `safetensors`.")
+
+            if _is_lora_active(self.config):
+                self._save_adapter_only(state_dict, checkpoint_path + "_adapter", save_format)
 
             summary_data = {"steps": self.completed_steps}
             with open(os.path.join(self.config.output_dir, "summary.jsonl"), "a") as f:
@@ -430,12 +459,44 @@ class VLATrainer(TrainerUtils):
                 torch.save(state_dict, os.path.join(final_checkpoint, "pytorch_model.pt"))
             else:
                 raise ValueError(f"Unsupported save_format `{save_format}`. Expected `pt` or `safetensors`.")
+
+            if _is_lora_active(self.config):
+                self._save_adapter_only(state_dict, os.path.join(final_checkpoint, "adapter"), save_format)
+
             logger.info(f"Training complete. Final model saved at {final_checkpoint}")
 
         if self.accelerator.is_main_process:
             wandb.finish()
 
         self.accelerator.wait_for_everyone()
+
+    def _save_adapter_only(self, full_state_dict, path_prefix, save_format):
+        """Filter an already-gathered full `state_dict` (DeepSpeed-safe, via
+        `accelerator.get_state_dict`) down to LoRA-adapter keys only, and save
+        it separately as a small artifact alongside the full checkpoint.
+        """
+        adapter_state_dict = {k: v for k, v in full_state_dict.items() if "lora_" in k}
+        if not adapter_state_dict:
+            logger.warning(
+                "LoRA is enabled but no `lora_*` keys were found in the state_dict — "
+                "check that apply_lora_adapters actually ran."
+            )
+            return
+
+        if save_format == "safetensors":
+            from safetensors.torch import save_file
+
+            save_file(adapter_state_dict, path_prefix + ".safetensors")
+        elif save_format == "pt":
+            torch.save(adapter_state_dict, path_prefix + ".pt")
+        else:
+            raise ValueError(f"Unsupported save_format `{save_format}`. Expected `pt` or `safetensors`.")
+
+        num_params = sum(v.numel() for v in adapter_state_dict.values())
+        self.accelerator.print(
+            f"✅ Adapter-only checkpoint saved at {path_prefix} "
+            f"({len(adapter_state_dict)} tensors, {num_params / 1e6:.3f}M params)"
+        )
 
 
 def main(cfg) -> None:
@@ -455,17 +516,16 @@ def main(cfg) -> None:
 
     output_dir = setup_directories(cfg=cfg)
     vla = build_framework(cfg)
-    vla_train_dataloader = prepare_data(cfg=cfg, accelerator=accelerator, output_dir=output_dir)
-    optimizer, lr_scheduler = setup_optimizer_and_scheduler(model=vla, cfg=cfg)
 
-    trainer = VLATrainer(
-        cfg=cfg,
-        model=vla,
-        vla_train_dataloader=vla_train_dataloader,
-        optimizer=optimizer,
-        lr_scheduler=lr_scheduler,
-        accelerator=accelerator,
-    )
+    trainer = VLATrainer(cfg=cfg, model=vla, accelerator=accelerator)
+    trainer.init_checkpoint_and_lora()
+
+    vla_train_dataloader = prepare_data(cfg=cfg, accelerator=accelerator, output_dir=output_dir)
+    optimizer, lr_scheduler = setup_optimizer_and_scheduler(model=trainer.model, cfg=cfg)
+
+    trainer.vla_train_dataloader = vla_train_dataloader
+    trainer.optimizer = optimizer
+    trainer.lr_scheduler = lr_scheduler
 
     trainer.prepare_training()
     trainer.train()
